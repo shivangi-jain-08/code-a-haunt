@@ -1,4 +1,4 @@
-const { getTherapyContext } = require("../AIModules/getContext");
+const { getTherapyContext,updateTherapyContext } = require("../AIModules/getContext");
 const UserDataModel = require("../Schema/UserSchema");
 const TherapyDataInputValidationSchema = require("../Validation/TherapyDataInputValidationSchema");
 const TherapyDataModel = require("./../Schema/TherapySchema");
@@ -71,7 +71,7 @@ const createTherapySession = async (req, res) => {
             UserSolution: response.UserSolution,
             Approach: approach,
             Therapist: therapist,
-            ChatHistory: [],
+            ChatHistory: null,
             UserId: user._id
           })
           const updatedUser = await UserDataModel.findOneAndUpdate(
@@ -92,9 +92,55 @@ const createTherapySession = async (req, res) => {
     return res.status(500).json({ message: "Unable to create Therapy Session." });
   }
 };
+const updateTherapyContext = async (req,res) => {
+  try{
+    const id = req.params.id;
+    const therapySession = await TherapyDataModel.findById(id);
+    if (!therapySession) {
+      return res.status(404).json({ message: "No Therapy Session Found" });
+    }else{
+      const updatedTherapyContext = await updateTherapyContext(therapySession.UserProblem,therapySession.UserSolution,therapySession.ChatHistory)
+      const updatedTherapySession = await TherapyDataModel.findByIdAndUpdate(id,{
+        UserProblem: updatedTherapyContext.UserProblem,
+        UserSolution: updatedTherapyContext.UserSolution
+      })
+
+      return res
+        .status(200)
+        .json({
+          message: "THerapy Successfully Updated",
+          updatedTherapySession
+        });
+    }
+  }catch(error){
+    console.log(error);
+    return res
+      .status(500)
+      .json({ message: "Unable to update Therapy Sessions", error });
+  }
+}
+
+const updateTherapyChatHistory = async (req,res)=>{
+  try {
+    const id = req.params.id;
+    const chatHistory = req.body.chatHistory;
+    const therapySession = await TherapyDataModel.findById(id);
+    if (!therapySession) {
+      return res.status(404).json({ message: "No Therapy Session Found" });
+    }else{
+      const updatedChatHistory = await UserDataModel.findByIdAndUpdate(id,{
+        ChatHistory: chatHistory
+      })
+    }
+  } catch (error) {
+    
+  }
+}
 
 module.exports = {
   getAllTherapySessions,
   getTherapySessionById,
   createTherapySession,
+  updateTherapyContext,
+  updateTherapyChatHistory
 };

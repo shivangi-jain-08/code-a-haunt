@@ -1,21 +1,17 @@
 const mongoose = require('mongoose');
 
 const ChatHistorySchema = new mongoose.Schema({
-    Sender: {
+    role: {
         type: String,
-        enum: ['user', 'ai'],
+        enum: ['user', 'assistant'],
         required: true
     },
-    Message: {
+    content: {
         type: String,
         required: true
     },
 },
-{
-    timestamps: true,
-}
 );
-
 const TherapySessionSchema = new mongoose.Schema({
     UserProblem: {
         type: String,
