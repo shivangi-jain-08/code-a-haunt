@@ -99,7 +99,7 @@ const updateTherapyContextController = async (req,res) => {
     if (!therapySession) {
       return res.status(404).json({ message: "No Therapy Session Found" });
     }else{
-      const updatedTherapyContext = await updateTherapyContextController(therapySession.UserProblem,therapySession.UserSolution,therapySession.ChatHistory)
+      const updatedTherapyContext = await updateTherapyContext(therapySession.UserProblem,therapySession.UserSolution,therapySession.ChatHistory)
       const updatedTherapySession = await TherapyDataModel.findByIdAndUpdate(id,{
         UserProblem: updatedTherapyContext.UserProblem,
         UserSolution: updatedTherapyContext.UserSolution
