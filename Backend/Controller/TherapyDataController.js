@@ -92,14 +92,14 @@ const createTherapySession = async (req, res) => {
     return res.status(500).json({ message: "Unable to create Therapy Session." });
   }
 };
-const updateTherapyContext = async (req,res) => {
+const updateTherapyContextController = async (req,res) => {
   try{
     const id = req.params.id;
     const therapySession = await TherapyDataModel.findById(id);
     if (!therapySession) {
       return res.status(404).json({ message: "No Therapy Session Found" });
     }else{
-      const updatedTherapyContext = await updateTherapyContext(therapySession.UserProblem,therapySession.UserSolution,therapySession.ChatHistory)
+      const updatedTherapyContext = await updateTherapyContextController(therapySession.UserProblem,therapySession.UserSolution,therapySession.ChatHistory)
       const updatedTherapySession = await TherapyDataModel.findByIdAndUpdate(id,{
         UserProblem: updatedTherapyContext.UserProblem,
         UserSolution: updatedTherapyContext.UserSolution
@@ -141,6 +141,6 @@ module.exports = {
   getAllTherapySessions,
   getTherapySessionById,
   createTherapySession,
-  updateTherapyContext,
+  updateTherapyContextController,
   updateTherapyChatHistory
 };
