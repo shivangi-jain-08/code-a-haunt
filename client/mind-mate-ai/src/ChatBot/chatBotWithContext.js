@@ -1,12 +1,10 @@
 import { ChatOpenAI, OpenAIEmbeddings } from "@langchain/openai";
 import { MemoryVectorStore } from "langchain/vectorstores/memory";
-import { TextLoader } from "langchain/document_loaders/fs/text";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import {
   MessagesAnnotation,
   StateGraph,
   MemorySaver,
-  getPreviousState,
 } from "@langchain/langgraph";
 import { ToolNode, toolsCondition } from "@langchain/langgraph/prebuilt";
 import {
@@ -123,10 +121,6 @@ export const doChat = async (input,context,chatHistory) => {
     .addEdge("generate", "__end__");
 
   let checkpointer = new MemorySaver();
-  // }
-  //   const checkpointer = new KeyValueCacheSaver({
-  //   store: chatCache, // Stores chat history in a Map (can be replaced with a DB)
-  // });
 
   const graphWithMemory = graphBuilder.compile({ checkpointer });
   let chatContent;
