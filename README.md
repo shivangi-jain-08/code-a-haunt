@@ -1,4 +1,4 @@
-# 🧠 Aura AI - AI that understands your emotional aura.
+# 🧠 MindMate AI - AI that understands your emotional state.
 
 ## 🚀 Overview  
 Access to mental health support is often hindered by barriers like cost, stigma, and availability. Traditional virtual therapy lacks immersion and personalized interaction. This project aims to create a **scalable, accessible, and engaging AI-powered virtual mental health consultant** that provides **private, empathetic, and real-time support**.  
