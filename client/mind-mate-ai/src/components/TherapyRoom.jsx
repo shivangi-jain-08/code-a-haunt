@@ -3,8 +3,9 @@ import { useChat } from "../hooks/useChat";
 
 export const TherapyRoom = () => {
   const inputRef = useRef();
-  const { chat, loading, cameraZoomed, setCameraZoomed, message } = useChat();
+ 
 
+  
   const handleSend = async () => {
     const text = inputRef.current.value.trim();
     if (!text || loading) return;
