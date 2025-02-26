@@ -1,8 +1,9 @@
-const User = require("../Schema/UserSchema");
 const jwt = require('jsonwebtoken');
-// const User = require('../models/user');
 const nodemailer = require('nodemailer');
+const userMentalHealthValidationSchema = require("./../Validation/UserMentalHealthValidationSchema")
+const UserDataModel = require("../Schema/UserSchema");
 const bcrypt = require('bcrypt');
+const { getRefinedUserDetail } = require("../AIModules/getRefinement");
 require('dotenv').config();
 
 // Nodemailer transporter
@@ -20,15 +21,15 @@ const transporter = nodemailer.createTransport({
 // Handler to create a user
 const createUser = async (req, res) => {
     try {
-        const { username, name, email, password } = req.body;
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const user = await User.find({ $or: [{ username }, { email }] });
+        const { Username, Name, Email, Password } = req.body;
+        const hashedPassword = await bcrypt.hash(Password, 10);
+        const user = await UserDataModel.find({ $or: [{ Username: Username }, { Email: Email }] });
         if (user.length === 0) {
-            const newUser = new User({ username, name, email, password: hashedPassword });
+            const newUser = new UserDataModel({ Username: Username, Name: Name, Email: Email, Password: hashedPassword,TherapyHistory: [], UserDetails: null });
             const otp = newUser.generateOTP();
-            await sendOTPEmail(email, otp);
+            await sendOTPEmail(Email, otp);
             await newUser.save();
-            const token = jwt.sign({ id: newUser._id, username: newUser.username }, process.env.JWT_SECRET, { expiresIn: '1h' });
+            const token = jwt.sign({ id: newUser._id, Username: newUser.Username }, process.env.JWT_SECRET, { expiresIn: '1h' });
             res.status(201).json({ message: "User created successfully", token, data: newUser });
         } else {
             res.status(401).json({ message: "User already exists", data: user });
@@ -41,8 +42,8 @@ const createUser = async (req, res) => {
 
 const verifyOTP = async (req, res) => {
     try {
-        const { email, otp } = req.body;
-        const user = await User.findOne({ email });
+        const { Email, otp } = req.body;
+        const user = await UserDataModel.findOne({ Email: Email });
 
         if (!user) {
             return res.status(404).json({ message: "User not found" });
@@ -63,34 +64,34 @@ const verifyOTP = async (req, res) => {
 };
 
 
-// Function to send OTP email
-const sendOTPEmail = async (email, otp) => {
+// Function to send OTP Email
+const sendOTPEmail = async (Email, otp) => {
     try {
         const mailOptions = {
             from: process.env.WEB_MAILID,
-            to: email,
+            to: Email,
             subject: 'OTP Verification',
             html: `<p>Your OTP for verification is: <strong>${otp}</strong></p>`,
         };
 
         await transporter.sendMail(mailOptions);
-        console.log('OTP email sent successfully');
-        // console.log(`OTP email sent to ${email}: ${otp}`);
+        console.log('OTP Email sent successfully');
+        // console.log(`OTP Email sent to ${Email}: ${otp}`);
     } catch (error) {
-        console.error('Error sending OTP email:', error);
+        console.error('Error sending OTP Email:', error);
         throw error;
     }
 };
 
 const loginUser = async (req, res) => {
     try {
-        const { username, password } = req.body;
-        const user = await User.findOne({ username });
-        if (user && await bcrypt.compare(password, user.password)) {
-            const token = jwt.sign({ id: user._id, username: user.username }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const { Username, Password } = req.body;
+        const user = await UserDataModel.findOne({ Username: Username });
+        if (user && await bcrypt.compare(Password, user.Password)) {
+            const token = jwt.sign({ id: user._id, Username: user.Username }, process.env.JWT_SECRET, { expiresIn: '1h' });
             res.status(200).json({ message: "Login successful", token, data: user });
         } else {
-            res.status(401).json({ message: "Invalid username or password" });
+            res.status(401).json({ message: "Invalid Username or Password" });
         }
     } catch (error) {
         console.error("Error logging in user:", error);
@@ -99,18 +100,18 @@ const loginUser = async (req, res) => {
 };
 
 const getInWithGoogle = async (req, res) => {
-    let { username, name, email, password, avatar, Verify } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await User.find({ $or: [{ username }, { email }] });
+    let { Username, Name, Email, Password } = req.body;
+    const hashedPassword = await bcrypt.hash(Password, 10);
+    const user = await UserDataModel.find({ $or: [{ Username }, { Email }] });
     if (user.length === 0) {
-        const newUser = new User({ username, name, email, password: hashedPassword, avatar, Verify: Verify || false });
+        const newUser = new UserDataModel({ Username, Name, Email, Password: hashedPassword,TherapyHistory: [], UserDetails: null  });
         await newUser.save()
-        const token = jwt.sign({ id: newUser._id, username: newUser.username }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign({ id: newUser._id, Username: newUser.Username }, process.env.JWT_SECRET, { expiresIn: '1h' });
         res.status(201).json({ message: "User created successfully", token, data: newUser });
     } else {
-        const user = await User.findOne({ username });
-        if (user && await bcrypt.compare(password, user.password)) {
-            const token = jwt.sign({ id: user._id, username: user.username }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const user = await UserDataModel.findOne({ Username });
+        if (user && await bcrypt.compare(Password, user.Password)) {
+            const token = jwt.sign({ id: user._id, Username: user.Username }, process.env.JWT_SECRET, { expiresIn: '1h' });
             res.status(200).json({ message: "Login successful", token, data: user });
         } else {
             res.status(401).json({ message: "Try logging in using your Username/Password" });
@@ -121,7 +122,7 @@ const getInWithGoogle = async (req, res) => {
 
 const getAllUsers = async (req, res) => {
   try {
-    const AllUsers = await User.find({}).populate("TherapyHistory");
+    const AllUsers = await UserDataModel.find({}).populate("TherapyHistory");
     if (AllUsers.length == 0) {
       return res.status(404).json({ message: "No Users Found" });
     } else {
@@ -138,7 +139,7 @@ const getAllUsers = async (req, res) => {
 
 const getUserByUserId = async (req, res) => {
   try {
-    const OneUser = await User.findById(req.params.id)
+    const OneUser = await UserDataModel.findById(req.params.id)
       .populate("TherapyHistory")
     if (!OneUser) {
       return res.status(404).json({ message: "User not found" });
@@ -150,8 +151,36 @@ const getUserByUserId = async (req, res) => {
   }
 };
 
+const updateUserWithInitialUserDetail = async(req,res)=>{
+    try {
+      // Validate the request body against the Joi schema
+      const { error, value } = userMentalHealthValidationSchema.validate(req.body, { abortEarly: false });
+  
+      if (error) {
+        return res.status(400).json({
+          success: false,
+          error: "Validation failed",
+          details: error.details.map((err) => err.message),
+        });
+      }
+  
+      const userResponse = await UserDataModel.findById(req.params.id);
+        if (!userResponse) {
+          return res.status(400).json({ message: "Invalid Username" });
+        }
+      // Process the validated data using the refinement function
+      const refinedData = await getRefinedUserDetail(value);
+      const updatedUser = await UserDataModel.findByIdAndUpdate(req.params.id,{UserDetails: refinedData})
+  
+      return res.status(200).json({ success: true, refinedData, updatedUser });
+  
+    } catch (error) {
+      console.error("Error in refining user data:", error);
+      return res.status(500).json({ success: false, error: "Internal Server Error" });
+    }
+  }
 
 
 
 
-module.exports = {getAllUsers,getUserByUserId,verifyOTP, getInWithGoogle, loginUser, createUser}
+module.exports = {getAllUsers,getUserByUserId,verifyOTP, getInWithGoogle, loginUser, createUser,updateUserWithInitialUserDetail}

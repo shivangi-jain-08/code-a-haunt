@@ -5,12 +5,12 @@ const dotenv = require("dotenv");
 const { StringOutputParser } = require("@langchain/core/output_parsers");
 dotenv.config();
 
-const getTherapyContext = async (unstructuredInput, approach) => {
+const getTherapyContext = async (globalContext,unstructuredInput, approach) => {
   try {
     console.log("Calling AI to get Context");
 
-    const UserProblem = await getUserProblemContext(unstructuredInput);
-    const UserSolution = await getUserSolutionContext(UserProblem, approach);
+    const UserProblem = await getUserProblemContext(globalContext, unstructuredInput);
+    const UserSolution = await getUserSolutionContext(globalContext,UserProblem, approach);
 
     const res = {
       UserProblem,
@@ -23,17 +23,20 @@ const getTherapyContext = async (unstructuredInput, approach) => {
   }
 };
 
-const getUserProblemContext = async (unstructuredInput) => {
+const getUserProblemContext = async (globalContext,unstructuredInput) => {
   try {
     const openaiModel = new ChatOpenAI({
       modelName: "gpt-4o",
       temperature: 0.7,
     });
     const context_prompt = ChatPromptTemplate.fromTemplate(
-      `Give the summary of the Problem in 200 words in first person perspective
+      `Analyze the User Personality and history Details and Give the summary of the Problem in 200 words in first person perspective
     
     Problem:
     {unstructuredInput}
+
+    User Personality Detail and History:
+    {UserDetail}
     `
     );
 
@@ -43,6 +46,7 @@ const getUserProblemContext = async (unstructuredInput) => {
 
     const res = await context_chain.invoke({
       unstructuredInput,
+      UserDetail: JSON.stringify(globalContext)
     });
     console.log(res);
 
@@ -52,14 +56,14 @@ const getUserProblemContext = async (unstructuredInput) => {
   }
 };
 
-const getUserSolutionContext = async (problem, approach) => {
+const getUserSolutionContext = async (globalContext,problem, approach) => {
   try {
     const openaiModel = new ChatOpenAI({
       modelName: "gpt-4o",
       temperature: 0.7,
     });
     const context_prompt = ChatPromptTemplate.fromTemplate(
-      `I want a response based on a therapist's perspective. Here is the problem: {problem}. Please approach the solution using {approach}. The response should be empathetic, practical, and actionable
+      `I want a response based on a therapist's perspective. Here is the problem: {problem}.Here is the Persons Personality History: {UserDetail} Please approach the solution using {approach}. The response should be empathetic, practical, and actionable
     `
     );
 
@@ -70,6 +74,7 @@ const getUserSolutionContext = async (problem, approach) => {
     const res = await context_chain.invoke({
       problem,
       approach,
+      UserDetail: JSON.stringify(globalContext)
     });
     console.log(res);
 
@@ -106,7 +111,7 @@ const updateUserProblemContext = async(UserProblem,chatHistory) => {
       temperature: 0.7,
     });
     const context_prompt = ChatPromptTemplate.fromTemplate(
-      `Update the summary by comparing between Problem Before and The chat they had with therapist of the Problem in 200 words in first person perspective
+      `Update the summary by comparing between Problem Before and The chat they had with therapist of the Problem in 200 words in first person perspective. Only give the updated problem, no feedback or changes after session
     
     Problem Before:
     {UserProblem}
@@ -122,7 +127,7 @@ const updateUserProblemContext = async(UserProblem,chatHistory) => {
       .pipe(new StringOutputParser());
 
     const res = await context_chain.invoke({
-      UserProblem,chatHistory
+      UserProblem,chatHistory: JSON.stringify(chatHistory)
     });
     console.log(res);
 
@@ -139,7 +144,7 @@ const updateUserSolutionContext = async(UserSolution,chatHistory)=>{
       temperature: 0.7,
     });
     const context_prompt = ChatPromptTemplate.fromTemplate(
-      `Update the Solution by comparing it with the chatHistory, Just Overwrite, Dont Modify
+      `Update the Solution by comparing it with the chatHistory, Just Overwrite, Dont Modify, give in minimum 200 words
 
       Solution:
       {UserSolution}
@@ -155,7 +160,7 @@ const updateUserSolutionContext = async(UserSolution,chatHistory)=>{
 
     const res = await context_chain.invoke({
       UserSolution,
-      chatHistory,
+      chatHistory: JSON.stringify(chatHistory),
     });
     console.log(res);
 

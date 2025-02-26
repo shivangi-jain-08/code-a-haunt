@@ -64,21 +64,22 @@ const createTherapySession = async (req, res) => {
       if (!user) {
         return res.status(400).json({ message: "Invalid Username" });
       }else{
-
-          const response = await getTherapyContext(inputProblem, approach);
+          const globalContext = user.UserDetails;
+          const response = await getTherapyContext(globalContext,inputProblem, approach);
           const postTherapySession = await TherapyDataModel.create({
             UserProblem: response.UserProblem,
             UserSolution: response.UserSolution,
             Approach: approach,
             Therapist: therapist,
-            ChatHistory: null,
+            ChatHistory: [],
             UserId: user._id
           })
-          const updatedUser = await UserDataModel.findOneAndUpdate(
+          await UserDataModel.findOneAndUpdate(
 
             {Username: username},
             {TherapyHistory: [postTherapySession._id,...user.TherapyHistory]}
           )
+          const updatedUser = await UserDataModel.findOne({Username: username})
 
           return res.status(201).json({
             message: "Therapy Session Created",
@@ -99,16 +100,17 @@ const updateTherapyContextController = async (req,res) => {
     if (!therapySession) {
       return res.status(404).json({ message: "No Therapy Session Found" });
     }else{
-      const updatedTherapyContext = await updateTherapyContext(therapySession.UserProblem,therapySession.UserSolution,therapySession.ChatHistory)
+      const updatedTherapyContext = await updateTherapyContext(therapySession.UserProblem,therapySession.UserSolution,req.body.ChatHistory)
       const updatedTherapySession = await TherapyDataModel.findByIdAndUpdate(id,{
         UserProblem: updatedTherapyContext.UserProblem,
-        UserSolution: updatedTherapyContext.UserSolution
+        UserSolution: updatedTherapyContext.UserSolution,
+        ChatHistory: req.body.ChatHistory
       })
 
       return res
         .status(200)
         .json({
-          message: "THerapy Successfully Updated",
+          message: "Therapy Successfully Updated",
           updatedTherapySession
         });
     }
@@ -120,27 +122,46 @@ const updateTherapyContextController = async (req,res) => {
   }
 }
 
-const updateTherapyChatHistory = async (req,res)=>{
+const getContextController = async(req,res)=>{
   try {
-    const id = req.params.id;
-    const chatHistory = req.body.chatHistory;
-    const therapySession = await TherapyDataModel.findById(id);
-    if (!therapySession) {
-      return res.status(404).json({ message: "No Therapy Session Found" });
-    }else{
-      const updatedChatHistory = await UserDataModel.findByIdAndUpdate(id,{
-        ChatHistory: chatHistory
-      })
-    }
+    const response = await getTherapyContext(req.body.globalContext,req.body.input, req.body.approach);
+    return res.status(201).json({
+      context: response
+    })
+
   } catch (error) {
-    
+    return res.status(500).json({
+      error: error
+    })
   }
 }
+
+const deleteTherapySession = async (req, res) => {
+  try {
+      const deletedTherapySession = await TherapyDataModel.findByIdAndDelete(req.params.id)
+
+      if(!deletedTherapySession){
+          return res.status(404).json({message: "Unable to find the Therapy Sessions"})
+      }else{
+        const userid = deletedTherapySession.UserId
+          const user = await UserDataModel.findById(userid)
+          const updatedPresentationsArr = user.TherapyHistory.filter(e=> !e.equals(deletedTherapySession._id))
+          const updatedUser = await UserDataModel.findByIdAndUpdate(userid,{TherapyHistory: updatedPresentationsArr},{new: true})
+          return res.status(200).json({message: "User deleted Successfully",DeletedTherapySession: deletedTherapySession,UpdatedUser: updatedUser})
+      }
+  } catch (error) {
+    return res
+    .status(500)
+    .json({ message: "Unable to Delete the Therapy Session", Error: error });
+  }
+};
+
 
 module.exports = {
   getAllTherapySessions,
   getTherapySessionById,
   createTherapySession,
   updateTherapyContextController,
-  updateTherapyChatHistory
+  getContextController,
+  deleteTherapySession
 };
